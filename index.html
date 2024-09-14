@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Word Puzzle Game with Levels</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: #3375BB;
+            text-align: center;
+            background-color: #FEC569;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(2, 100px);
+            grid-template-rows: repeat(2, 100px);
+            gap: 0;
+            margin: 0 auto;
+            margin-bottom: 20px;
+        }
+
+        .grid-square {
+            width: 100px;
+            height: 100px;
+            background-color: #C2DFF5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            position: relative;
+        }
+
+        .grid-square::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 4px solid #3375BB;
+            box-sizing: border-box;
+        }
+
+        .grid-square:nth-child(odd) + .grid-square::before {
+            border-left: none;
+        }
+
+        .grid-square:nth-child(n+3)::before {
+            border-top: none;
+        }
+
+        #tiles-container {
+            margin-bottom: 20px;
+        }
+
+        .tile {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 5px;
+            border: 3px solid #3375BB;
+            background-color: #F7A5AC;
+            cursor: grab;
+            user-select: none;
+            font-size: 42px;
+            font-weight: bolder;
+            aspect-ratio: 1 / 1;
+            width: 88px;
+        }
+
+        .tile:active {
+            cursor: grabbing;
+        }
+
+        #reset-button, #hint-button, #next-level-button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        #message {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .letter-left {
+            position: relative;
+            top: -18px;
+            left: -6px;
+        }
+
+        .letter-right {
+            position: relative;
+            top: 18px;
+            left: 6px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Word Puzzle Game with Levels</h1>
+    <div id="game-container">
+        <div id="level-indicator">Level 1</div>
+        <div id="tiles-container"></div>
+        <div id="grid"></div>
+        <div class="buttons">
+            <button id="reset-button">Reset</button>
+            <button id="hint-button">Hint</button>
+            <button id="next-level-button" disabled>Next Level</button>
+        </div>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const levels = {
+                1: ["List", "Step", "Keep", "Like"],
+                2: ["Sore", "Rely", "Only", "Soon"],
+                3: ["Note", "Text", "Next", "None"],
+                4: ["Wish", "Shed", "Need", "Wine"],
+                5: ["Dare", "Rest", "Test", "Date"],
+                6: ["Like", "Keep", "Step", "List"],
+                7: ["Sole", "Lest", "Rest", "Sore"],
+                8: ["Fine", "Need", "Shed", "Fish"],
+                9: ["Wife", "Fear", "Near", "Wine"],
+                10: ["Cost", "Stay", "Okay", "Cook"],
+                11: ["Fine", "Near", "Rear", "Fire"],
+                12: ["Wine", "Neat", "Seat", "Wise"],
+                13: ["Rule", "Lead", "Dead", "Rude"],
+                14: ["Wine", "Near", "Fear", "Wife"],
+                15: ["Wine", "Near", "Dear", "Wide"],
+                16: ["Cast", "Star", "Rear", "Care"],
+                17: ["Rude", "Dead", "Lead", "Rule"],
+                18: ["Care", "Rear", "Star", "Cast"],
+                19: ["Line", "Near", "Fear", "Life"],
+                20: ["Cash", "Shop", "Stop", "Cast"],
+                21: ["Wine", "Need", "Shed", "Wish"],
+                22: ["Fish", "Shed", "Need", "Fine"],
+                23: ["Soon", "Only", "Rely", "Sore"],
+                24: ["File", "Lead", "Read", "Fire"],
+                25: ["Cook", "Okay", "Stay", "Cost"]
+            };
+
+            let currentLevel = 1;
+            let tiles = [];
+            let targetWords = {};
+            let correctPositions = {};
+            let draggedTile = null;
+
+            const gridContainer = document.getElementById('grid');
+            const tilesContainer = document.getElementById('tiles-container');
+            const resetButton = document.getElementById('reset-button');
+            const hintButton = document.getElementById('hint-button');
+            const nextLevelButton = document.getElementById('next-level-button');
+            const messageDiv = document.getElementById('message');
+            const levelIndicator = document.getElementById('level-indicator');
+
+            function initLevel(level) {
+                // Clear previous tiles and grid
+                tilesContainer.innerHTML = '';
+                gridContainer.innerHTML = '';
+                messageDiv.textContent = '';
+                nextLevelButton.disabled = true;
+                levelIndicator.textContent = `Level ${level}`;
+
+                // Get words for the level
+                const levelWords = levels[level];
+                if (!levelWords) {
+                    messageDiv.textContent = 'No more levels!';
+                    return;
+                }
+
+                // Map words to their positions
+                targetWords = {
+                    leftColumn: levelWords[0].toUpperCase(),
+                    bottomRow: levelWords[1].toUpperCase(),
+                    rightColumn: levelWords[2].toUpperCase(),
+                    topRow: levelWords[3].toUpperCase()
+                };
+
+                // Generate tiles and correct positions
+                generateTilesAndPositions();
+
+                // Create grid squares
+                createGridSquares();
+
+                // Add event listeners to tiles and grid squares
+                addEventListeners();
+            }
+
+            function generateTilesAndPositions() {
+                // Extract letters to create tiles
+                const tileLetters = {};
+
+                // Tiles are positions: tile00, tile01, tile10, tile11
+                // tile00: positions [0][0]
+                // tile01: positions [0][1]
+                // tile10: positions [1][0]
+                // tile11: positions [1][1]
+
+                const tile00 = [
+                    targetWords.topRow[0],
+                    targetWords.topRow[1]
+                ];
+
+                const tile01 = [
+                    targetWords.topRow[2],
+                    targetWords.topRow[3]
+                ];
+
+                const tile10 = [
+                    targetWords.bottomRow[0],
+                    targetWords.bottomRow[1]
+                ];
+
+                const tile11 = [
+                    targetWords.bottomRow[2],
+                    targetWords.bottomRow[3]
+                ];
+
+                // Verify that letters match for vertical words
+                if (
+                    tile00[0] !== targetWords.leftColumn[0] ||
+                    tile00[1] !== targetWords.leftColumn[1] ||
+                    tile10[0] !== targetWords.leftColumn[2] ||
+                    tile10[1] !== targetWords.leftColumn[3] ||
+                    tile01[0] !== targetWords.rightColumn[0] ||
+                    tile01[1] !== targetWords.rightColumn[1] ||
+                    tile11[0] !== targetWords.rightColumn[2] ||
+                    tile11[1] !== targetWords.rightColumn[3]
+                ) {
+                    messageDiv.textContent = 'Error: Words do not form a valid grid.';
+                    return;
+                }
+
+                // Store tile letters
+                tileLetters['tile00'] = tile00;
+                tileLetters['tile01'] = tile01;
+                tileLetters['tile10'] = tile10;
+                tileLetters['tile11'] = tile11;
+
+                // Create tiles
+                tiles = [];
+                for (let key in tileLetters) {
+                    const letters = tileLetters[key];
+                    const tileId = `tile-${letters.join('')}`;
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    tile.id = tileId;
+                    tile.setAttribute('draggable', 'true');
+                    tile.dataset.letters = letters.join(',');
+
+                    // Create span elements for letters
+                    const spanLeft = document.createElement('span');
+                    spanLeft.classList.add('letter-left');
+                    spanLeft.textContent = letters[0];
+
+                    const spanRight = document.createElement('span');
+                    spanRight.classList.add('letter-right');
+                    spanRight.textContent = letters[1];
+
+                    tile.appendChild(spanLeft);
+                    tile.appendChild(spanRight);
+
+                    tilesContainer.appendChild(tile);
+                    tiles.push(tile);
+                }
+
+                // Correct positions for hint function
+                correctPositions = {
+                    [`tile-${tile00.join('')}`]: '0-0',
+                    [`tile-${tile01.join('')}`]: '0-1',
+                    [`tile-${tile10.join('')}`]: '1-0',
+                    [`tile-${tile11.join('')}`]: '1-1'
+                };
+            }
+
+            function createGridSquares() {
+                for (let row = 0; row < 2; row++) {
+                    for (let col = 0; col < 2; col++) {
+                        const square = document.createElement('div');
+                        square.classList.add('grid-square');
+                        square.dataset.position = `${row}-${col}`;
+                        gridContainer.appendChild(square);
+                    }
+                }
+            }
+
+            function addEventListeners() {
+                const gridSquares = document.querySelectorAll('.grid-square');
+
+                tiles.forEach(tile => {
+                    tile.addEventListener('dragstart', (e) => {
+                        draggedTile = tile;
+                        e.dataTransfer.setData('text/plain', tile.dataset.letters);
+                    });
+                });
+
+                gridSquares.forEach(square => {
+                    square.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                    });
+
+                    square.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        if (square.children.length === 0 && draggedTile) {
+                            square.appendChild(draggedTile);
+                            checkCompletion();
+                            draggedTile = null;
+                        }
+                    });
+                });
+
+                resetButton.addEventListener('click', () => {
+                    resetGame();
+                });
+
+                hintButton.addEventListener('click', () => {
+                    provideHint();
+                });
+
+                nextLevelButton.addEventListener('click', () => {
+                    currentLevel++;
+                    initLevel(currentLevel);
+                });
+            }
+
+            function checkCompletion() {
+                const positions = {};
+                const gridSquares = document.querySelectorAll('.grid-square');
+
+                gridSquares.forEach(square => {
+                    const pos = square.dataset.position;
+                    if (square.children.length > 0) {
+                        const tile = square.children[0];
+                        positions[pos] = tile.dataset.letters.split(',');
+                    }
+                });
+
+                if (Object.keys(positions).length === 4) {
+                    // All squares are filled
+                    // Now check the words
+
+                    // Top row horizontal word (row 0)
+                    const tile00 = positions['0-0'];
+                    const tile01 = positions['0-1'];
+                    const topRowWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
+
+                    // Bottom row horizontal word (row 1)
+                    const tile10 = positions['1-0'];
+                    const tile11 = positions['1-1'];
+                    const bottomRowWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
+
+                    // Left column vertical word (column 0)
+                    const leftColumnWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
+
+                    // Right column vertical word (column 1)
+                    const rightColumnWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
+
+                    if (
+                        topRowWord === targetWords.topRow &&
+                        bottomRowWord === targetWords.bottomRow &&
+                        leftColumnWord === targetWords.leftColumn &&
+                        rightColumnWord === targetWords.rightColumn
+                    ) {
+                        messageDiv.textContent = 'Congratulations! You solved the puzzle!';
+                        nextLevelButton.disabled = false;
+                    } else {
+                        messageDiv.textContent = 'Not quite right. Try again!';
+                    }
+                } else {
+                    messageDiv.textContent = '';
+                }
+            }
+
+            function resetGame() {
+                // Remove tiles from grid squares
+                const gridSquares = document.querySelectorAll('.grid-square');
+                gridSquares.forEach(square => {
+                    if (square.children.length > 0) {
+                        const tile = square.children[0];
+                        square.removeChild(tile);
+                        tilesContainer.appendChild(tile);
+                    }
+                });
+                messageDiv.textContent = '';
+                draggedTile = null;
+                nextLevelButton.disabled = true;
+            }
+
+            function provideHint() {
+                // Check which tiles are not yet placed
+                const unplacedTiles = Array.from(tiles).filter(tile => !tile.parentElement.classList.contains('grid-square'));
+                // If there are unplaced tiles, place one of them correctly
+                if (unplacedTiles.length > 0) {
+                    for (let tile of unplacedTiles) {
+                        const tileId = tile.id;
+                        const pos = correctPositions[tileId];
+                        const square = document.querySelector(`.grid-square[data-position="${pos}"]`);
+                        if (square.children.length === 0) {
+                            square.appendChild(tile);
+                            checkCompletion();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Initialize the first level
+            initLevel(currentLevel);
+        });
+    </script>
+</body>
+</html>
