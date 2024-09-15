@@ -2,44 +2,49 @@
 <html>
 <head>
     <title>BOXO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Mobile scaling -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* General Styles */
         body {
             font-family: 'Poppins', sans-serif;
             color: #3375BB;
             text-align: center;
             background-color: #FEC569;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            margin-top: 20px;
         }
 
         #game-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 20px;
+            padding: 10px;
         }
 
+        /* Grid Styles */
         #grid {
             display: grid;
-            grid-template-columns: repeat(2, 100px);
-            grid-template-rows: repeat(2, 100px);
-            gap: 0;
-            margin: 0 auto;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 5px;
+            width: 90vw; /* Responsive width */
+            max-width: 400px;
             margin-bottom: 20px;
         }
 
         .grid-square {
-            width: 100px;
-            height: 100px;
             background-color: #C2DFF5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 36px;
             position: relative;
+            width: 100%;
+            padding-bottom: 100%; /* Square aspect ratio */
+            overflow: hidden;
         }
 
-        .grid-square::before {
-            content: '';
+        .grid-square-content {
             position: absolute;
             top: 0;
             left: 0;
@@ -47,61 +52,102 @@
             height: 100%;
             border: 4px solid #3375BB;
             box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5vw; /* Responsive font size */
         }
 
-        .grid-square:nth-child(odd) + .grid-square::before {
-            border-left: none;
-        }
-
-        .grid-square:nth-child(n+3)::before {
-            border-top: none;
-        }
-
+        /* Tiles Styles */
         #tiles-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             margin-bottom: 20px;
         }
 
         .tile {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
+            position: relative;
+            width: 20vw;
+            max-width: 80px;
             margin: 5px;
-            border: 3px solid #3375BB;
+            padding-bottom: 20vw; /* Square aspect ratio */
             background-color: #F7A5AC;
-            cursor: grab;
-            user-select: none;
-            font-size: 42px;
+            border: 3px solid #3375BB;
+            cursor: pointer;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .tile-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            font-size: 6vw; /* Responsive font size */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
             font-weight: bolder;
-            aspect-ratio: 1 / 1;
-            width: 88px;
         }
 
-        .tile:active {
-            cursor: grabbing;
-        }
-
-        #reset-button, #hint-button, #next-level-button {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 16px;
-        }
-
-        #message {
-            margin-top: 20px;
-            font-size: 24px;
-            font-weight: bold;
+        .tile.selected {
+            outline: 4px solid #FFD700;
         }
 
         .letter-left {
             position: relative;
-            top: -18px;
-            left: -6px;
+            top: -10%;
         }
 
         .letter-right {
             position: relative;
-            top: 18px;
-            left: 6px;
+            bottom: -10%;
+        }
+
+        /* Buttons */
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .buttons button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 4vw; /* Responsive font size */
+            max-font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Message */
+        #message {
+            font-size: 5vw; /* Responsive font size */
+            max-font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* Responsive Adjustments */
+        @media (min-width: 600px) {
+            .grid-square-content {
+                font-size: 24px;
+            }
+
+            .tile-content {
+                font-size: 32px;
+            }
+
+            .buttons button {
+                font-size: 16px;
+            }
+
+            #message {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
@@ -127,33 +173,14 @@
                 3: ["Note", "Text", "Next", "None"],
                 4: ["Wish", "Shed", "Need", "Wine"],
                 5: ["Dare", "Rest", "Test", "Date"],
-                6: ["Like", "Keep", "Step", "List"],
-                7: ["Sole", "Lest", "Rest", "Sore"],
-                8: ["Fine", "Need", "Shed", "Fish"],
-                9: ["Wife", "Fear", "Near", "Wine"],
-                10: ["Cost", "Stay", "Okay", "Cook"],
-                11: ["Fine", "Near", "Rear", "Fire"],
-                12: ["Wine", "Neat", "Seat", "Wise"],
-                13: ["Rule", "Lead", "Dead", "Rude"],
-                14: ["Wine", "Near", "Fear", "Wife"],
-                15: ["Wine", "Near", "Dear", "Wide"],
-                16: ["Cast", "Star", "Rear", "Care"],
-                17: ["Rude", "Dead", "Lead", "Rule"],
-                18: ["Care", "Rear", "Star", "Cast"],
-                19: ["Line", "Near", "Fear", "Life"],
-                20: ["Cash", "Shop", "Stop", "Cast"],
-                21: ["Wine", "Need", "Shed", "Wish"],
-                22: ["Fish", "Shed", "Need", "Fine"],
-                23: ["Soon", "Only", "Rely", "Sore"],
-                24: ["File", "Lead", "Read", "Fire"],
-                25: ["Cook", "Okay", "Stay", "Cost"]
+                // Add more levels as needed
             };
 
             let currentLevel = 1;
             let tiles = [];
             let targetWords = {};
             let correctPositions = {};
-            let draggedTile = null;
+            let selectedTile = null;
 
             const gridContainer = document.getElementById('grid');
             const tilesContainer = document.getElementById('tiles-container');
@@ -192,11 +219,11 @@
                 // Create grid squares
                 createGridSquares();
 
-                // Add event listeners to tiles and grid squares
-                addEventListeners();
-
                 // Shuffle the tiles after they are added to the container
                 shuffleDivs();
+
+                // Add event listeners to tiles and buttons
+                addEventListeners();
             }
 
             function generateTilesAndPositions() {
@@ -204,11 +231,6 @@
                 const tileLetters = {};
 
                 // Tiles are positions: tile00, tile01, tile10, tile11
-                // tile00: positions [0][0]
-                // tile01: positions [0][1]
-                // tile10: positions [1][0]
-                // tile11: positions [1][1]
-
                 const tile00 = [
                     targetWords.topRow[0],
                     targetWords.topRow[1]
@@ -232,10 +254,8 @@
                 // Verify that letters match for vertical words
                 const leftColumnCheck = tile00[0] + tile00[1] + tile10[0] + tile10[1] === targetWords.leftColumn;
                 const rightColumnCheck = tile01[0] + tile01[1] + tile11[0] + tile11[1] === targetWords.rightColumn;
-                const alternativeLeftColumnCheck = tile00[0] + tile00[1] + tile01[0] + tile01[1] === targetWords.leftColumn;
-                const alternativeRightColumnCheck = tile10[0] + tile10[1] + tile11[0] + tile11[1] === targetWords.rightColumn;
 
-                if (!((leftColumnCheck && rightColumnCheck) || (alternativeLeftColumnCheck && alternativeRightColumnCheck))) {
+                if (!leftColumnCheck || !rightColumnCheck) {
                     messageDiv.textContent = 'Error: Words do not form a valid grid.';
                     return;
                 }
@@ -254,21 +274,24 @@
                     const tile = document.createElement('div');
                     tile.classList.add('tile');
                     tile.id = tileId;
-                    tile.setAttribute('draggable', 'true');
                     tile.dataset.letters = letters.join(',');
 
+                    const tileContent = document.createElement('div');
+                    tileContent.classList.add('tile-content');
+
                     // Create span elements for letters
-                    const spanLeft = document.createElement('span');
+                    const spanLeft = document.createElement('div');
                     spanLeft.classList.add('letter-left');
                     spanLeft.textContent = letters[0];
 
-                    const spanRight = document.createElement('span');
+                    const spanRight = document.createElement('div');
                     spanRight.classList.add('letter-right');
                     spanRight.textContent = letters[1];
 
-                    tile.appendChild(spanLeft);
-                    tile.appendChild(spanRight);
+                    tileContent.appendChild(spanLeft);
+                    tileContent.appendChild(spanRight);
 
+                    tile.appendChild(tileContent);
                     tilesContainer.appendChild(tile);
                     tiles.push(tile);
                 }
@@ -288,32 +311,42 @@
                         const square = document.createElement('div');
                         square.classList.add('grid-square');
                         square.dataset.position = `${row}-${col}`;
+
+                        const squareContent = document.createElement('div');
+                        squareContent.classList.add('grid-square-content');
+                        square.appendChild(squareContent);
+
                         gridContainer.appendChild(square);
+
+                        // Add event listener for tap-to-place functionality
+                        square.addEventListener('click', () => {
+                            if (selectedTile && squareContent.children.length === 0) {
+                                squareContent.appendChild(selectedTile);
+                                selectedTile.classList.remove('selected');
+                                selectedTile = null;
+                                checkCompletion();
+                            }
+                        });
                     }
                 }
             }
 
             function addEventListeners() {
-                const gridSquares = document.querySelectorAll('.grid-square');
-
                 tiles.forEach(tile => {
-                    tile.addEventListener('dragstart', (e) => {
-                        draggedTile = tile;
-                        e.dataTransfer.setData('text/plain', tile.dataset.letters);
-                    });
-                });
-
-                gridSquares.forEach(square => {
-                    square.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                    });
-
-                    square.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        if (square.children.length === 0 && draggedTile) {
-                            square.appendChild(draggedTile);
-                            checkCompletion();
-                            draggedTile = null;
+                    // Add event listener for tap-to-select functionality
+                    tile.addEventListener('click', () => {
+                        // Deselect if the same tile is clicked
+                        if (selectedTile === tile) {
+                            tile.classList.remove('selected');
+                            selectedTile = null;
+                        } else {
+                            // Deselect previous tile
+                            if (selectedTile) {
+                                selectedTile.classList.remove('selected');
+                            }
+                            // Select new tile
+                            selectedTile = tile;
+                            tile.classList.add('selected');
                         }
                     });
                 });
@@ -338,17 +371,16 @@
 
                 gridSquares.forEach(square => {
                     const pos = square.dataset.position;
-                    if (square.children.length > 0) {
-                        const tile = square.children[0];
+                    const squareContent = square.querySelector('.grid-square-content');
+                    if (squareContent.children.length > 0) {
+                        const tile = squareContent.children[0];
                         positions[pos] = tile.dataset.letters.split(',');
                     }
                 });
 
                 if (Object.keys(positions).length === 4) {
                     // All squares are filled
-                    // Now check the words in both possible arrangements
-
-                    const isSolved = checkArrangement(positions) || checkAlternativeArrangement(positions);
+                    const isSolved = checkArrangement(positions);
 
                     if (isSolved) {
                         messageDiv.textContent = 'Congratulations! You solved the puzzle!';
@@ -374,62 +406,49 @@
                 const rightColumnWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
 
                 return (
-                    topRowWord === targetWords.topRow &&
+                    (topRowWord === targetWords.topRow &&
                     bottomRowWord === targetWords.bottomRow &&
                     leftColumnWord === targetWords.leftColumn &&
-                    rightColumnWord === targetWords.rightColumn
-                );
-            }
+                    rightColumnWord === targetWords.rightColumn) ||
 
-            function checkAlternativeArrangement(positions) {
-                // Second arrangement (swapped tiles at positions (0,1) and (1,0))
-                const tile00 = positions['0-0'];
-                const tile10 = positions['0-1']; // Swapped
-                const tile01 = positions['1-0']; // Swapped
-                const tile11 = positions['1-1'];
-
-                const topRowWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
-                const bottomRowWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
-                const leftColumnWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
-                const rightColumnWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
-
-                return (
-                    topRowWord === targetWords.leftColumn && // Swapped
+                    // Check for alternative arrangement (if applicable)
+                    (topRowWord === targetWords.leftColumn &&
                     bottomRowWord === targetWords.rightColumn &&
                     leftColumnWord === targetWords.topRow &&
-                    rightColumnWord === targetWords.bottomRow
+                    rightColumnWord === targetWords.bottomRow)
                 );
             }
 
             function resetGame() {
                 // Remove tiles from grid squares
-                const gridSquares = document.querySelectorAll('.grid-square');
-                gridSquares.forEach(square => {
-                    if (square.children.length > 0) {
-                        const tile = square.children[0];
-                        square.removeChild(tile);
+                const gridSquares = document.querySelectorAll('.grid-square-content');
+                gridSquares.forEach(squareContent => {
+                    if (squareContent.children.length > 0) {
+                        const tile = squareContent.children[0];
+                        squareContent.removeChild(tile);
                         tilesContainer.appendChild(tile);
                     }
                 });
                 messageDiv.textContent = '';
-                draggedTile = null;
+                selectedTile = null;
                 nextLevelButton.disabled = true;
-
-                // Shuffle the tiles again
+                tiles.forEach(tile => tile.classList.remove('selected'));
                 shuffleDivs();
             }
 
             function provideHint() {
                 // Check which tiles are not yet placed
-                const unplacedTiles = Array.from(tiles).filter(tile => !tile.parentElement.classList.contains('grid-square'));
+                const unplacedTiles = Array.from(tiles).filter(tile => !tile.closest('.grid-square'));
                 // If there are unplaced tiles, place one of them correctly
                 if (unplacedTiles.length > 0) {
                     for (let tile of unplacedTiles) {
                         const tileId = tile.id;
                         const pos = correctPositions[tileId];
-                        const square = document.querySelector(`.grid-square[data-position="${pos}"]`);
+                        const square = document.querySelector(`.grid-square[data-position="${pos}"] .grid-square-content`);
                         if (square.children.length === 0) {
                             square.appendChild(tile);
+                            tile.classList.remove('selected');
+                            selectedTile = null;
                             checkCompletion();
                             break;
                         }
