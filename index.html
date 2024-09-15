@@ -4,6 +4,8 @@
     <title>BOXO</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Mobile scaling -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Include SortableJS via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         /* General Styles */
         body {
@@ -13,17 +15,34 @@
             background-color: #FEC569;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         h1 {
-            margin-top: 20px;
+            margin: 20px 0;
+            font-size: 8vw;
+            color: #ffffff;
+            text-shadow: 2px 2px #3375BB;
         }
 
         #game-container {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Level Indicator */
+        #level-indicator {
+            font-size: 6vw;
+            margin-bottom: 10px;
+            color: #ffffff;
+            text-shadow: 1px 1px #000000;
         }
 
         /* Grid Styles */
@@ -42,8 +61,8 @@
             width: 100%;
             padding-bottom: 100%; /* Square aspect ratio */
             overflow: hidden;
-            border: 4px solid #3375BB;
-            box-sizing: border-box;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .grid-square-content {
@@ -52,10 +71,14 @@
             left: 0;
             width: 100%;
             height: 100%;
-            font-size: 5vw; /* Responsive font size */
+            border: 4px dashed #3375BB;
+            box-sizing: border-box;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 5vw; /* Responsive font size */
+            background-color: #E6F0FA;
+            border-radius: 6px;
         }
 
         /* Tiles Styles */
@@ -64,6 +87,8 @@
             flex-wrap: wrap;
             justify-content: center;
             margin-bottom: 20px;
+            width: 90vw;
+            max-width: 400px;
         }
 
         .tile {
@@ -77,7 +102,9 @@
             cursor: grab;
             box-sizing: border-box;
             overflow: hidden;
-            touch-action: none; /* Prevent default touch actions */
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            user-select: none;
         }
 
         .tile:active {
@@ -96,7 +123,8 @@
             justify-content: center;
             flex-direction: column;
             font-weight: bolder;
-            user-select: none;
+            color: #ffffff;
+            text-shadow: 1px 1px #000000;
         }
 
         .letter-left {
@@ -123,6 +151,20 @@
             font-size: 4vw; /* Responsive font size */
             max-font-size: 16px;
             cursor: pointer;
+            background-color: #3375BB;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+
+        .buttons button:hover {
+            background-color: #285A9E;
+        }
+
+        .buttons button:disabled {
+            background-color: #A0C4FF;
+            cursor: not-allowed;
         }
 
         /* Message */
@@ -131,10 +173,20 @@
             max-font-size: 24px;
             font-weight: bold;
             margin-bottom: 20px;
+            color: #ffffff;
+            text-shadow: 1px 1px #000000;
         }
 
         /* Responsive Adjustments */
         @media (min-width: 600px) {
+            h1 {
+                font-size: 48px;
+            }
+
+            #level-indicator {
+                font-size: 24px;
+            }
+
             .grid-square-content {
                 font-size: 24px;
             }
@@ -170,11 +222,11 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const levels = {
-                1: ["List", "Step", "Keep", "Like"],
-                2: ["Sore", "Rely", "Only", "Soon"],
-                3: ["Note", "Text", "Next", "None"],
-                4: ["Wish", "Shed", "Need", "Wine"],
-                5: ["Dare", "Rest", "Test", "Date"],
+                1: ["LIST", "STEP", "KEEP", "LIKE"],
+                2: ["SORE", "RELY", "ONLY", "SOON"],
+                3: ["NOTE", "TEXT", "NEXT", "NONE"],
+                4: ["WISH", "SHED", "NEED", "WINE"],
+                5: ["DARE", "REST", "TEST", "DATE"],
                 // Add more levels as needed
             };
 
@@ -182,7 +234,6 @@
             let tiles = [];
             let targetWords = {};
             let correctPositions = {};
-            let draggedTile = null;
 
             const gridContainer = document.getElementById('grid');
             const tilesContainer = document.getElementById('tiles-container');
@@ -221,11 +272,11 @@
                 // Create grid squares
                 createGridSquares();
 
+                // Initialize SortableJS for tiles and grid squares
+                initializeDragAndDrop();
+
                 // Shuffle the tiles after they are added to the container
                 shuffleDivs();
-
-                // Add event listeners to tiles and buttons
-                addEventListeners();
             }
 
             function generateTilesAndPositions() {
@@ -254,8 +305,8 @@
                 ];
 
                 // Verify that letters match for vertical words
-                const leftColumnCheck = tile00[0] + tile00[1] + tile10[0] + tile10[1] === targetWords.leftColumn;
-                const rightColumnCheck = tile01[0] + tile01[1] + tile11[0] + tile11[1] === targetWords.rightColumn;
+                const leftColumnCheck = targetWords.leftColumn === (tile00.join('') + tile10.join('')).slice(0, 4);
+                const rightColumnCheck = targetWords.rightColumn === (tile01.join('') + tile11.join('')).slice(0, 4);
 
                 if (!leftColumnCheck || !rightColumnCheck) {
                     messageDiv.textContent = 'Error: Words do not form a valid grid.';
@@ -319,121 +370,56 @@
                         square.appendChild(squareContent);
 
                         gridContainer.appendChild(square);
-
-                        // Add event listener for drop functionality
-                        square.addEventListener('drop', handleDrop);
-                        square.addEventListener('dragover', handleDragOver);
-                        square.addEventListener('touchend', handleDrop);
                     }
                 }
             }
 
-            function addEventListeners() {
-                tiles.forEach(tile => {
-                    // Drag-and-Drop Events
-                    tile.addEventListener('dragstart', handleDragStart);
-                    tile.addEventListener('dragend', handleDragEnd);
-
-                    // Touch Events
-                    tile.addEventListener('touchstart', handleTouchStart);
-                    tile.addEventListener('touchmove', handleTouchMove);
-                    tile.addEventListener('touchend', handleTouchEnd);
-                });
-
-                resetButton.addEventListener('click', () => {
-                    resetGame();
-                });
-
-                hintButton.addEventListener('click', () => {
-                    provideHint();
-                });
-
-                nextLevelButton.addEventListener('click', () => {
-                    currentLevel++;
-                    initLevel(currentLevel);
-                });
-            }
-
-            // Drag-and-Drop Handlers
-            function handleDragStart(e) {
-                draggedTile = this;
-                setTimeout(() => {
-                    this.classList.add('invisible');
-                }, 0);
-            }
-
-            function handleDragEnd() {
-                this.classList.remove('invisible');
-            }
-
-            function handleDragOver(e) {
-                e.preventDefault();
-            }
-
-            function handleDrop(e) {
-                e.preventDefault();
-                const squareContent = this.querySelector('.grid-square-content');
-                if (squareContent.children.length === 0 && draggedTile) {
-                    squareContent.appendChild(draggedTile);
-                    checkCompletion();
-                    draggedTile = null;
-                }
-            }
-
-            // Touch Handlers
-            function handleTouchStart(e) {
-                e.preventDefault();
-                draggedTile = this;
-                this.classList.add('invisible');
-
-                const touch = e.touches[0];
-                draggedTile.initialX = touch.clientX - draggedTile.offsetLeft;
-                draggedTile.initialY = touch.clientY - draggedTile.offsetTop;
-            }
-
-            function handleTouchMove(e) {
-                e.preventDefault();
-                const touch = e.touches[0];
-                const x = touch.clientX - draggedTile.initialX;
-                const y = touch.clientY - draggedTile.initialY;
-
-                draggedTile.style.position = 'absolute';
-                draggedTile.style.left = `${x}px`;
-                draggedTile.style.top = `${y}px`;
-            }
-
-            function handleTouchEnd(e) {
-                e.preventDefault();
-                const touch = e.changedTouches[0];
-                const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-
-                if (dropTarget && dropTarget.classList.contains('grid-square-content')) {
-                    if (dropTarget.children.length === 0) {
-                        dropTarget.appendChild(draggedTile);
-                        checkCompletion();
-                    } else {
-                        // Return tile to tiles container if drop target is occupied
-                        tilesContainer.appendChild(draggedTile);
+            function initializeDragAndDrop() {
+                // Initialize Sortable for tiles container
+                Sortable.create(tilesContainer, {
+                    group: {
+                        name: 'tiles',
+                        pull: 'clone',
+                        put: false
+                    },
+                    animation: 150,
+                    sort: false,
+                    onEnd: function (evt) {
+                        // Prevent tiles from being moved back to tilesContainer
+                        if (evt.to !== tilesContainer) {
+                            evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]);
+                        }
                     }
-                } else {
-                    // Return tile to tiles container if not dropped on a grid square
-                    tilesContainer.appendChild(draggedTile);
-                }
+                });
 
-                // Reset tile styles
-                draggedTile.style.position = '';
-                draggedTile.style.left = '';
-                draggedTile.style.top = '';
-                draggedTile.classList.remove('invisible');
-                draggedTile = null;
+                // Initialize Sortable for grid squares
+                const gridSquares = document.querySelectorAll('.grid-square-content');
+                gridSquares.forEach(square => {
+                    Sortable.create(square, {
+                        group: 'tiles',
+                        animation: 150,
+                        onAdd: function (evt) {
+                            // Ensure only one tile per square
+                            if (square.children.length > 1) {
+                                square.removeChild(evt.item);
+                                return;
+                            }
+                            checkCompletion();
+                        },
+                        onRemove: function (evt) {
+                            checkCompletion();
+                        }
+                    });
+                });
             }
 
             function checkCompletion() {
                 const positions = {};
-                const gridSquares = document.querySelectorAll('.grid-square');
+                const gridSquares = document.querySelectorAll('.grid-square-content');
+
                 gridSquares.forEach(square => {
-                    const pos = square.dataset.position;
-                    const squareContent = square.querySelector('.grid-square-content');
+                    const pos = square.parentElement.dataset.position;
+                    const squareContent = square;
                     if (squareContent.children.length > 0) {
                         const tile = squareContent.children[0];
                         positions[pos] = tile.dataset.letters.split(',');
@@ -445,39 +431,35 @@
                     const isSolved = checkArrangement(positions);
 
                     if (isSolved) {
-                        messageDiv.textContent = 'Congratulations! You solved the puzzle!';
+                        messageDiv.textContent = '🎉 Congratulations! You solved the puzzle! 🎉';
                         nextLevelButton.disabled = false;
                     } else {
-                        messageDiv.textContent = 'Not quite right. Try again!';
+                        messageDiv.textContent = '❌ Not quite right. Try again! ❌';
                     }
                 } else {
                     messageDiv.textContent = '';
+                    nextLevelButton.disabled = true;
                 }
             }
 
             function checkArrangement(positions) {
-                // First arrangement (original)
-                const tile00 = positions['0-0'];
-                const tile01 = positions['0-1'];
-                const tile10 = positions['1-0'];
-                const tile11 = positions['1-1'];
+                // Extract tiles based on positions
+                const tile00 = positions['0-0'] || [];
+                const tile01 = positions['0-1'] || [];
+                const tile10 = positions['1-0'] || [];
+                const tile11 = positions['1-1'] || [];
 
-                const topRowWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
-                const bottomRowWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
-                const leftColumnWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
-                const rightColumnWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
+                // Form words
+                const topRowWord = tile00.join('') + tile01.join('');
+                const bottomRowWord = tile10.join('') + tile11.join('');
+                const leftColumnWord = tile00.join('') + tile10.join('');
+                const rightColumnWord = tile01.join('') + tile11.join('');
 
                 return (
-                    (topRowWord === targetWords.topRow &&
+                    topRowWord === targetWords.topRow &&
                     bottomRowWord === targetWords.bottomRow &&
                     leftColumnWord === targetWords.leftColumn &&
-                    rightColumnWord === targetWords.rightColumn) ||
-
-                    // Check for alternative arrangement (if applicable)
-                    (topRowWord === targetWords.leftColumn &&
-                    bottomRowWord === targetWords.rightColumn &&
-                    leftColumnWord === targetWords.topRow &&
-                    rightColumnWord === targetWords.bottomRow)
+                    rightColumnWord === targetWords.rightColumn
                 );
             }
 
@@ -492,12 +474,60 @@
                     }
                 });
                 messageDiv.textContent = '';
-                draggedTile = null;
                 nextLevelButton.disabled = true;
+                // Shuffle the tiles
                 shuffleDivs();
             }
 
             function provideHint() {
                 // Check which tiles are not yet placed
-                const unplacedTiles = Array.from(tiles).filter(tile => !tile.closest('.grid-square'));
-                // If​⬤
+                const unplacedTiles = Array.from(tilesContainer.children);
+                // If there are unplaced tiles, place one of them correctly
+                if (unplacedTiles.length > 0) {
+                    for (let tile of unplacedTiles) {
+                        const tileId = tile.id;
+                        const pos = correctPositions[tileId];
+                        const square = document.querySelector(`.grid-square-content[data-position="${pos}"]`);
+                        const targetSquare = document.querySelector(`.grid-square[data-position="${pos}"] .grid-square-content`);
+                        if (targetSquare && targetSquare.children.length === 0) {
+                            targetSquare.appendChild(tile);
+                            checkCompletion();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            function shuffleDivs() {
+                const parent = document.getElementById('tiles-container');
+                const divsArray = Array.from(parent.children);
+
+                // Fisher-Yates shuffle algorithm to randomize array
+                for (let i = divsArray.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [divsArray[i], divsArray[j]] = [divsArray[j], divsArray[i]];
+                }
+
+                // Append shuffled divs back to parent
+                divsArray.forEach(div => parent.appendChild(div));
+            }
+
+            resetButton.addEventListener('click', () => {
+                resetGame();
+            });
+
+            hintButton.addEventListener('click', () => {
+                provideHint();
+            });
+
+            nextLevelButton.addEventListener('click', () => {
+                currentLevel++;
+                initLevel(currentLevel);
+            });
+
+            // Initialize the first level
+            initLevel(currentLevel);
+        });
+    </script>
+</body>
+</html>
