@@ -49,14 +49,6 @@
             box-sizing: border-box;
         }
 
-        .grid-square:nth-child(odd) + .grid-square::before {
-            border-left: none;
-        }
-
-        .grid-square:nth-child(n+3)::before {
-            border-top: none;
-        }
-
         #tiles-container {
             margin-bottom: 20px;
         }
@@ -103,6 +95,26 @@
             top: 18px;
             left: 6px;
         }
+
+        @media (max-width: 600px) {
+            .grid-square, .tile {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+
+            #grid {
+                grid-template-columns: repeat(2, 60px);
+                grid-template-rows: repeat(2, 60px);
+            }
+
+            #tiles-container {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+        }
     </style>
 </head>
 <body>
@@ -126,27 +138,7 @@
                 2: ["Sore", "Rely", "Only", "Soon"],
                 3: ["Note", "Text", "Next", "None"],
                 4: ["Wish", "Shed", "Need", "Wine"],
-                5: ["Dare", "Rest", "Test", "Date"],
-                6: ["Like", "Keep", "Step", "List"],
-                7: ["Sole", "Lest", "Rest", "Sore"],
-                8: ["Fine", "Need", "Shed", "Fish"],
-                9: ["Wife", "Fear", "Near", "Wine"],
-                10: ["Cost", "Stay", "Okay", "Cook"],
-                11: ["Fine", "Near", "Rear", "Fire"],
-                12: ["Wine", "Neat", "Seat", "Wise"],
-                13: ["Rule", "Lead", "Dead", "Rude"],
-                14: ["Wine", "Near", "Fear", "Wife"],
-                15: ["Wine", "Near", "Dear", "Wide"],
-                16: ["Cast", "Star", "Rear", "Care"],
-                17: ["Rude", "Dead", "Lead", "Rule"],
-                18: ["Care", "Rear", "Star", "Cast"],
-                19: ["Line", "Near", "Fear", "Life"],
-                20: ["Cash", "Shop", "Stop", "Cast"],
-                21: ["Wine", "Need", "Shed", "Wish"],
-                22: ["Fish", "Shed", "Need", "Fine"],
-                23: ["Soon", "Only", "Rely", "Sore"],
-                24: ["File", "Lead", "Read", "Fire"],
-                25: ["Cook", "Okay", "Stay", "Cost"]
+                5: ["Dare", "Rest", "Test", "Date"]
             };
 
             let currentLevel = 1;
@@ -200,45 +192,12 @@
             }
 
             function generateTilesAndPositions() {
-                // Extract letters to create tiles
                 const tileLetters = {};
 
-                // Tiles are positions: tile00, tile01, tile10, tile11
-                // tile00: positions [0][0]
-                // tile01: positions [0][1]
-                // tile10: positions [1][0]
-                // tile11: positions [1][1]
-
-                const tile00 = [
-                    targetWords.topRow[0],
-                    targetWords.topRow[1]
-                ];
-
-                const tile01 = [
-                    targetWords.topRow[2],
-                    targetWords.topRow[3]
-                ];
-
-                const tile10 = [
-                    targetWords.bottomRow[0],
-                    targetWords.bottomRow[1]
-                ];
-
-                const tile11 = [
-                    targetWords.bottomRow[2],
-                    targetWords.bottomRow[3]
-                ];
-
-                // Verify that letters match for vertical words
-                const leftColumnCheck = tile00[0] + tile00[1] + tile10[0] + tile10[1] === targetWords.leftColumn;
-                const rightColumnCheck = tile01[0] + tile01[1] + tile11[0] + tile11[1] === targetWords.rightColumn;
-                const alternativeLeftColumnCheck = tile00[0] + tile00[1] + tile01[0] + tile01[1] === targetWords.leftColumn;
-                const alternativeRightColumnCheck = tile10[0] + tile10[1] + tile11[0] + tile11[1] === targetWords.rightColumn;
-
-                if (!((leftColumnCheck && rightColumnCheck) || (alternativeLeftColumnCheck && alternativeRightColumnCheck))) {
-                    messageDiv.textContent = 'Error: Words do not form a valid grid.';
-                    return;
-                }
+                const tile00 = [targetWords.topRow[0], targetWords.topRow[1]];
+                const tile01 = [targetWords.topRow[2], targetWords.topRow[3]];
+                const tile10 = [targetWords.bottomRow[0], targetWords.bottomRow[1]];
+                const tile11 = [targetWords.bottomRow[2], targetWords.bottomRow[3]];
 
                 // Store tile letters
                 tileLetters['tile00'] = tile00;
@@ -257,7 +216,6 @@
                     tile.setAttribute('draggable', 'true');
                     tile.dataset.letters = letters.join(',');
 
-                    // Create span elements for letters
                     const spanLeft = document.createElement('span');
                     spanLeft.classList.add('letter-left');
                     spanLeft.textContent = letters[0];
@@ -273,7 +231,6 @@
                     tiles.push(tile);
                 }
 
-                // Correct positions for hint function
                 correctPositions = {
                     [`tile-${tile00.join('')}`]: '0-0',
                     [`tile-${tile01.join('')}`]: '0-1',
@@ -301,6 +258,25 @@
                         draggedTile = tile;
                         e.dataTransfer.setData('text/plain', tile.dataset.letters);
                     });
+
+                    tile.addEventListener('touchstart', (e) => {
+                        draggedTile = tile;
+                        e.target.style.opacity = '0.5';
+                    });
+
+                    tile.addEventListener('touchmove', (e) => {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        tile.style.position = 'absolute';
+                        tile.style.left = `${touch.pageX - 50}px`;
+                        tile.style.top = `${touch.pageY - 50}px`;
+                    });
+
+                    tile.addEventListener('touchend', (e) => {
+                        tile.style.opacity = '1';
+                        tile.style.position = '';
+                        checkTouchDrop(e);
+                    });
                 });
 
                 gridSquares.forEach(square => {
@@ -316,144 +292,6 @@
                             draggedTile = null;
                         }
                     });
-                });
 
-                resetButton.addEventListener('click', () => {
-                    resetGame();
-                });
-
-                hintButton.addEventListener('click', () => {
-                    provideHint();
-                });
-
-                nextLevelButton.addEventListener('click', () => {
-                    currentLevel++;
-                    initLevel(currentLevel);
-                });
-            }
-
-            function checkCompletion() {
-                const positions = {};
-                const gridSquares = document.querySelectorAll('.grid-square');
-
-                gridSquares.forEach(square => {
-                    const pos = square.dataset.position;
-                    if (square.children.length > 0) {
-                        const tile = square.children[0];
-                        positions[pos] = tile.dataset.letters.split(',');
-                    }
-                });
-
-                if (Object.keys(positions).length === 4) {
-                    // All squares are filled
-                    // Now check the words in both possible arrangements
-
-                    const isSolved = checkArrangement(positions) || checkAlternativeArrangement(positions);
-
-                    if (isSolved) {
-                        messageDiv.textContent = 'Congratulations! You solved the puzzle!';
-                        nextLevelButton.disabled = false;
-                    } else {
-                        messageDiv.textContent = 'Not quite right. Try again!';
-                    }
-                } else {
-                    messageDiv.textContent = '';
-                }
-            }
-
-            function checkArrangement(positions) {
-                // First arrangement (original)
-                const tile00 = positions['0-0'];
-                const tile01 = positions['0-1'];
-                const tile10 = positions['1-0'];
-                const tile11 = positions['1-1'];
-
-                const topRowWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
-                const bottomRowWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
-                const leftColumnWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
-                const rightColumnWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
-
-                return (
-                    topRowWord === targetWords.topRow &&
-                    bottomRowWord === targetWords.bottomRow &&
-                    leftColumnWord === targetWords.leftColumn &&
-                    rightColumnWord === targetWords.rightColumn
-                );
-            }
-
-            function checkAlternativeArrangement(positions) {
-                // Second arrangement (swapped tiles at positions (0,1) and (1,0))
-                const tile00 = positions['0-0'];
-                const tile10 = positions['0-1']; // Swapped
-                const tile01 = positions['1-0']; // Swapped
-                const tile11 = positions['1-1'];
-
-                const topRowWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
-                const bottomRowWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
-                const leftColumnWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
-                const rightColumnWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
-
-                return (
-                    topRowWord === targetWords.leftColumn && // Swapped
-                    bottomRowWord === targetWords.rightColumn &&
-                    leftColumnWord === targetWords.topRow &&
-                    rightColumnWord === targetWords.bottomRow
-                );
-            }
-
-            function resetGame() {
-                // Remove tiles from grid squares
-                const gridSquares = document.querySelectorAll('.grid-square');
-                gridSquares.forEach(square => {
-                    if (square.children.length > 0) {
-                        const tile = square.children[0];
-                        square.removeChild(tile);
-                        tilesContainer.appendChild(tile);
-                    }
-                });
-                messageDiv.textContent = '';
-                draggedTile = null;
-                nextLevelButton.disabled = true;
-
-                // Shuffle the tiles again
-                shuffleDivs();
-            }
-
-            function provideHint() {
-                // Check which tiles are not yet placed
-                const unplacedTiles = Array.from(tiles).filter(tile => !tile.parentElement.classList.contains('grid-square'));
-                // If there are unplaced tiles, place one of them correctly
-                if (unplacedTiles.length > 0) {
-                    for (let tile of unplacedTiles) {
-                        const tileId = tile.id;
-                        const pos = correctPositions[tileId];
-                        const square = document.querySelector(`.grid-square[data-position="${pos}"]`);
-                        if (square.children.length === 0) {
-                            square.appendChild(tile);
-                            checkCompletion();
-                            break;
-                        }
-                    }
-                }
-            }
-
-            function shuffleDivs() {
-                const parent = document.getElementById('tiles-container');
-                const divsArray = Array.from(parent.children);
-
-                // Fisher-Yates shuffle algorithm to randomize array
-                for (let i = divsArray.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [divsArray[i], divsArray[j]] = [divsArray[j], divsArray[i]];
-                }
-
-                // Append shuffled divs back to parent
-                divsArray.forEach(div => parent.appendChild(div));
-            }
-
-            // Initialize the first level
-            initLevel(currentLevel);
-        });
-    </script>
-</body>
-</html>
+                    square.addEventListener('touchend', (e) => {
+                        checkTouchDrop
