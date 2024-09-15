@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Word Puzzle Game with Levels</title>
+    <title>BOXO</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body {
@@ -106,7 +106,7 @@
     </style>
 </head>
 <body>
-    <h1>Word Puzzle Game with Levels</h1>
+    <h1>BOXO</h1>
     <div id="game-container">
         <div id="level-indicator">Level 1</div>
         <div id="tiles-container"></div>
@@ -194,6 +194,9 @@
 
                 // Add event listeners to tiles and grid squares
                 addEventListeners();
+
+                // Shuffle the tiles after they are added to the container
+                shuffleDivs();
             }
 
             function generateTilesAndPositions() {
@@ -227,16 +230,12 @@
                 ];
 
                 // Verify that letters match for vertical words
-                if (
-                    tile00[0] !== targetWords.leftColumn[0] ||
-                    tile00[1] !== targetWords.leftColumn[1] ||
-                    tile10[0] !== targetWords.leftColumn[2] ||
-                    tile10[1] !== targetWords.leftColumn[3] ||
-                    tile01[0] !== targetWords.rightColumn[0] ||
-                    tile01[1] !== targetWords.rightColumn[1] ||
-                    tile11[0] !== targetWords.rightColumn[2] ||
-                    tile11[1] !== targetWords.rightColumn[3]
-                ) {
+                const leftColumnCheck = tile00[0] + tile00[1] + tile10[0] + tile10[1] === targetWords.leftColumn;
+                const rightColumnCheck = tile01[0] + tile01[1] + tile11[0] + tile11[1] === targetWords.rightColumn;
+                const alternativeLeftColumnCheck = tile00[0] + tile00[1] + tile01[0] + tile01[1] === targetWords.leftColumn;
+                const alternativeRightColumnCheck = tile10[0] + tile10[1] + tile11[0] + tile11[1] === targetWords.rightColumn;
+
+                if (!((leftColumnCheck && rightColumnCheck) || (alternativeLeftColumnCheck && alternativeRightColumnCheck))) {
                     messageDiv.textContent = 'Error: Words do not form a valid grid.';
                     return;
                 }
@@ -347,30 +346,11 @@
 
                 if (Object.keys(positions).length === 4) {
                     // All squares are filled
-                    // Now check the words
+                    // Now check the words in both possible arrangements
 
-                    // Top row horizontal word (row 0)
-                    const tile00 = positions['0-0'];
-                    const tile01 = positions['0-1'];
-                    const topRowWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
+                    const isSolved = checkArrangement(positions) || checkAlternativeArrangement(positions);
 
-                    // Bottom row horizontal word (row 1)
-                    const tile10 = positions['1-0'];
-                    const tile11 = positions['1-1'];
-                    const bottomRowWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
-
-                    // Left column vertical word (column 0)
-                    const leftColumnWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
-
-                    // Right column vertical word (column 1)
-                    const rightColumnWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
-
-                    if (
-                        topRowWord === targetWords.topRow &&
-                        bottomRowWord === targetWords.bottomRow &&
-                        leftColumnWord === targetWords.leftColumn &&
-                        rightColumnWord === targetWords.rightColumn
-                    ) {
+                    if (isSolved) {
                         messageDiv.textContent = 'Congratulations! You solved the puzzle!';
                         nextLevelButton.disabled = false;
                     } else {
@@ -379,6 +359,46 @@
                 } else {
                     messageDiv.textContent = '';
                 }
+            }
+
+            function checkArrangement(positions) {
+                // First arrangement (original)
+                const tile00 = positions['0-0'];
+                const tile01 = positions['0-1'];
+                const tile10 = positions['1-0'];
+                const tile11 = positions['1-1'];
+
+                const topRowWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
+                const bottomRowWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
+                const leftColumnWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
+                const rightColumnWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
+
+                return (
+                    topRowWord === targetWords.topRow &&
+                    bottomRowWord === targetWords.bottomRow &&
+                    leftColumnWord === targetWords.leftColumn &&
+                    rightColumnWord === targetWords.rightColumn
+                );
+            }
+
+            function checkAlternativeArrangement(positions) {
+                // Second arrangement (swapped tiles at positions (0,1) and (1,0))
+                const tile00 = positions['0-0'];
+                const tile10 = positions['0-1']; // Swapped
+                const tile01 = positions['1-0']; // Swapped
+                const tile11 = positions['1-1'];
+
+                const topRowWord = tile00[0] + tile00[1] + tile10[0] + tile10[1];
+                const bottomRowWord = tile01[0] + tile01[1] + tile11[0] + tile11[1];
+                const leftColumnWord = tile00[0] + tile00[1] + tile01[0] + tile01[1];
+                const rightColumnWord = tile10[0] + tile10[1] + tile11[0] + tile11[1];
+
+                return (
+                    topRowWord === targetWords.leftColumn && // Swapped
+                    bottomRowWord === targetWords.rightColumn &&
+                    leftColumnWord === targetWords.topRow &&
+                    rightColumnWord === targetWords.bottomRow
+                );
             }
 
             function resetGame() {
@@ -394,6 +414,9 @@
                 messageDiv.textContent = '';
                 draggedTile = null;
                 nextLevelButton.disabled = true;
+
+                // Shuffle the tiles again
+                shuffleDivs();
             }
 
             function provideHint() {
@@ -412,6 +435,20 @@
                         }
                     }
                 }
+            }
+
+            function shuffleDivs() {
+                const parent = document.getElementById('tiles-container');
+                const divsArray = Array.from(parent.children);
+
+                // Fisher-Yates shuffle algorithm to randomize array
+                for (let i = divsArray.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [divsArray[i], divsArray[j]] = [divsArray[j], divsArray[i]];
+                }
+
+                // Append shuffled divs back to parent
+                divsArray.forEach(div => parent.appendChild(div));
             }
 
             // Initialize the first level
