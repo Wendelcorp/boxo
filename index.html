@@ -42,6 +42,8 @@
             width: 100%;
             padding-bottom: 100%; /* Square aspect ratio */
             overflow: hidden;
+            border: 4px solid #3375BB;
+            box-sizing: border-box;
         }
 
         .grid-square-content {
@@ -50,12 +52,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            border: 4px solid #3375BB;
-            box-sizing: border-box;
+            font-size: 5vw; /* Responsive font size */
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 5vw; /* Responsive font size */
         }
 
         /* Tiles Styles */
@@ -74,9 +74,14 @@
             padding-bottom: 20vw; /* Square aspect ratio */
             background-color: #F7A5AC;
             border: 3px solid #3375BB;
-            cursor: pointer;
+            cursor: grab;
             box-sizing: border-box;
             overflow: hidden;
+            touch-action: none; /* Prevent default touch actions */
+        }
+
+        .tile:active {
+            cursor: grabbing;
         }
 
         .tile-content {
@@ -91,10 +96,7 @@
             justify-content: center;
             flex-direction: column;
             font-weight: bolder;
-        }
-
-        .tile.selected {
-            outline: 4px solid #FFD700;
+            user-select: none;
         }
 
         .letter-left {
@@ -180,7 +182,7 @@
             let tiles = [];
             let targetWords = {};
             let correctPositions = {};
-            let selectedTile = null;
+            let draggedTile = null;
 
             const gridContainer = document.getElementById('grid');
             const tilesContainer = document.getElementById('tiles-container');
@@ -318,37 +320,24 @@
 
                         gridContainer.appendChild(square);
 
-                        // Add event listener for tap-to-place functionality
-                        square.addEventListener('click', () => {
-                            if (selectedTile && squareContent.children.length === 0) {
-                                squareContent.appendChild(selectedTile);
-                                selectedTile.classList.remove('selected');
-                                selectedTile = null;
-                                checkCompletion();
-                            }
-                        });
+                        // Add event listener for drop functionality
+                        square.addEventListener('drop', handleDrop);
+                        square.addEventListener('dragover', handleDragOver);
+                        square.addEventListener('touchend', handleDrop);
                     }
                 }
             }
 
             function addEventListeners() {
                 tiles.forEach(tile => {
-                    // Add event listener for tap-to-select functionality
-                    tile.addEventListener('click', () => {
-                        // Deselect if the same tile is clicked
-                        if (selectedTile === tile) {
-                            tile.classList.remove('selected');
-                            selectedTile = null;
-                        } else {
-                            // Deselect previous tile
-                            if (selectedTile) {
-                                selectedTile.classList.remove('selected');
-                            }
-                            // Select new tile
-                            selectedTile = tile;
-                            tile.classList.add('selected');
-                        }
-                    });
+                    // Drag-and-Drop Events
+                    tile.addEventListener('dragstart', handleDragStart);
+                    tile.addEventListener('dragend', handleDragEnd);
+
+                    // Touch Events
+                    tile.addEventListener('touchstart', handleTouchStart);
+                    tile.addEventListener('touchmove', handleTouchMove);
+                    tile.addEventListener('touchend', handleTouchEnd);
                 });
 
                 resetButton.addEventListener('click', () => {
@@ -365,10 +354,83 @@
                 });
             }
 
+            // Drag-and-Drop Handlers
+            function handleDragStart(e) {
+                draggedTile = this;
+                setTimeout(() => {
+                    this.classList.add('invisible');
+                }, 0);
+            }
+
+            function handleDragEnd() {
+                this.classList.remove('invisible');
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                const squareContent = this.querySelector('.grid-square-content');
+                if (squareContent.children.length === 0 && draggedTile) {
+                    squareContent.appendChild(draggedTile);
+                    checkCompletion();
+                    draggedTile = null;
+                }
+            }
+
+            // Touch Handlers
+            function handleTouchStart(e) {
+                e.preventDefault();
+                draggedTile = this;
+                this.classList.add('invisible');
+
+                const touch = e.touches[0];
+                draggedTile.initialX = touch.clientX - draggedTile.offsetLeft;
+                draggedTile.initialY = touch.clientY - draggedTile.offsetTop;
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const x = touch.clientX - draggedTile.initialX;
+                const y = touch.clientY - draggedTile.initialY;
+
+                draggedTile.style.position = 'absolute';
+                draggedTile.style.left = `${x}px`;
+                draggedTile.style.top = `${y}px`;
+            }
+
+            function handleTouchEnd(e) {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+
+                if (dropTarget && dropTarget.classList.contains('grid-square-content')) {
+                    if (dropTarget.children.length === 0) {
+                        dropTarget.appendChild(draggedTile);
+                        checkCompletion();
+                    } else {
+                        // Return tile to tiles container if drop target is occupied
+                        tilesContainer.appendChild(draggedTile);
+                    }
+                } else {
+                    // Return tile to tiles container if not dropped on a grid square
+                    tilesContainer.appendChild(draggedTile);
+                }
+
+                // Reset tile styles
+                draggedTile.style.position = '';
+                draggedTile.style.left = '';
+                draggedTile.style.top = '';
+                draggedTile.classList.remove('invisible');
+                draggedTile = null;
+            }
+
             function checkCompletion() {
                 const positions = {};
                 const gridSquares = document.querySelectorAll('.grid-square');
-
                 gridSquares.forEach(square => {
                     const pos = square.dataset.position;
                     const squareContent = square.querySelector('.grid-square-content');
@@ -430,49 +492,12 @@
                     }
                 });
                 messageDiv.textContent = '';
-                selectedTile = null;
+                draggedTile = null;
                 nextLevelButton.disabled = true;
-                tiles.forEach(tile => tile.classList.remove('selected'));
                 shuffleDivs();
             }
 
             function provideHint() {
                 // Check which tiles are not yet placed
                 const unplacedTiles = Array.from(tiles).filter(tile => !tile.closest('.grid-square'));
-                // If there are unplaced tiles, place one of them correctly
-                if (unplacedTiles.length > 0) {
-                    for (let tile of unplacedTiles) {
-                        const tileId = tile.id;
-                        const pos = correctPositions[tileId];
-                        const square = document.querySelector(`.grid-square[data-position="${pos}"] .grid-square-content`);
-                        if (square.children.length === 0) {
-                            square.appendChild(tile);
-                            tile.classList.remove('selected');
-                            selectedTile = null;
-                            checkCompletion();
-                            break;
-                        }
-                    }
-                }
-            }
-
-            function shuffleDivs() {
-                const parent = document.getElementById('tiles-container');
-                const divsArray = Array.from(parent.children);
-
-                // Fisher-Yates shuffle algorithm to randomize array
-                for (let i = divsArray.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [divsArray[i], divsArray[j]] = [divsArray[j], divsArray[i]];
-                }
-
-                // Append shuffled divs back to parent
-                divsArray.forEach(div => parent.appendChild(div));
-            }
-
-            // Initialize the first level
-            initLevel(currentLevel);
-        });
-    </script>
-</body>
-</html>
+                // If​⬤
